@@ -45,22 +45,27 @@ html, body {
 
 /* ---------- Mây ---------- */
 .cloud { position: absolute; }
-.cloud .fly, .cloud .drift { width: 100%; height: 100%; }
+.cloud .fly, .cloud .drift, .note .fly, .note .sway {
+  width: 100%;
+  height: 100%;
+  will-change: transform;
+  backface-visibility: hidden;
+}
 .cloud img { width: 100%; height: 100%; display: block; }
 .stage .cloud .fly { opacity: 0; }
 .stage.ready .cloud-l .fly { animation: cloud-in-l 2.4s cubic-bezier(.2, .7, .2, 1) .1s both; }
 .stage.ready .cloud-r .fly { animation: cloud-in-r 2.4s cubic-bezier(.2, .7, .2, 1) .1s both; }
-.stage.ready .cloud-l .drift { animation: drift-l 9s ease-in-out 2.5s infinite alternate; }
+/* bay qua bay lại liên tục sau khi vào */
+.stage.ready .cloud-l .drift { animation: drift-l 7s ease-in-out 2.5s infinite alternate; }
 .stage.ready .cloud-r .drift { animation: drift-r 8s ease-in-out 2.5s infinite alternate; }
 
-@keyframes cloud-in-l { from { transform: translateX(-130%); opacity: 0; } 30% { opacity: 1; } to { transform: none; opacity: 1; } }
-@keyframes cloud-in-r { from { transform: translateX(130%);  opacity: 0; } 30% { opacity: 1; } to { transform: none; opacity: 1; } }
-@keyframes drift-l { to { transform: translateX(26px); } }
-@keyframes drift-r { to { transform: translateX(-26px); } }
+@keyframes cloud-in-l { from { transform: translate3d(-130%, 0, 0); opacity: 0; } 30% { opacity: 1; } to { transform: none; opacity: 1; } }
+@keyframes cloud-in-r { from { transform: translate3d(130%, 0, 0);  opacity: 0; } 30% { opacity: 1; } to { transform: none; opacity: 1; } }
+@keyframes drift-l { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(190px, 0, 0); } }
+@keyframes drift-r { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-210px, 0, 0); } }
 
 /* ---------- Nốt nhạc ---------- */
 .note { position: absolute; }
-.note .fly, .note .sway { width: 100%; height: 100%; }
 .note img { width: 100%; height: 100%; display: block; }
 .stage .note .fly { opacity: 0; }
 .stage.ready .note.from-l .fly { animation: note-in-l 1.6s cubic-bezier(.25, .8, .3, 1) var(--delay) both; }

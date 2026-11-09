@@ -140,7 +140,7 @@
       const el = document.createElement('div');
       el.className = `cloud cloud-${c.from}`;
       px(el, c.x, c.y, c.h * c.ratio, c.h);
-      el.innerHTML = `<div class="fly"><div class="drift"><img src="/nhac/assets/${c.src}.svg" alt="" draggable="false"></div></div>`;
+      el.innerHTML = `<div class="fly"><div class="drift"><img src="/nhac/assets/${c.src}.webp" alt="" draggable="false"></div></div>`;
       decor.appendChild(el);
     }
     L.notes.forEach((n, i) => {
@@ -152,7 +152,7 @@
       if (n.rot) el.style.transform = `rotate(${n.rot}deg)`;
       el.style.setProperty('--delay', `${0.5 + i * 0.13}s`);
       el.style.setProperty('--sway', `${1.5 + ((i * 7) % 5) * 0.18}s`);
-      el.innerHTML = `<div class="fly"><div class="sway"><img src="/nhac/assets/${n.src}.svg" alt="" draggable="false"></div></div>`;
+      el.innerHTML = `<div class="fly"><div class="sway"><img src="/nhac/assets/${n.src}.webp" alt="" draggable="false"></div></div>`;
       decor.appendChild(el);
     });
 
