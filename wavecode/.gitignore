@@ -1,0 +1,11 @@
+node_modules/
+dist/
+data/
+dev-dist/
+.env
+*.tmp
+.vercel
+.env*.local
+
+.vercel
+.env*

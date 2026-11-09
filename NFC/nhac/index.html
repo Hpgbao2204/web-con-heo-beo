@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f2467f" />
+  <title>Hò Tỏ Lời</title>
+  <meta name="description" content="Một tiếng hò xưa, mội miền thương nhớ." />
+  <meta property="og:title" content="Hò Tỏ Lời" />
+  <meta property="og:description" content="Một tiếng hò xưa, mội miền thương nhớ." />
+  <link rel="icon" href="/nhac/assets/play.svg" type="image/svg+xml" />
+  <link rel="preload" href="/nhac/assets/cloud-1.svg" as="image" />
+  <link rel="preload" href="/nhac/assets/cloud-2.svg" as="image" />
+  <link rel="stylesheet" href="/nhac/style.css" />
+</head>
+<body>
+  <div class="backdrop" id="backdrop"></div>
+
+  <main class="viewport" id="viewport">
+    <div class="stage" id="stage">
+      <img class="bg" id="bg" alt="" draggable="false" />
+      <div class="layer" id="decor"></div>
+
+      <button class="hit play-hit" id="playBtn" type="button" aria-label="Phát">
+        <svg class="play-icon" viewBox="0 0 100 100" aria-hidden="true">
+          <circle cx="50" cy="50" r="50" fill="#f72d72" />
+          <path class="icon-play" d="M35.7 30.2 L75.4 50 L35.7 69.8 Z" fill="#fff" />
+          <g class="icon-pause" fill="#fff">
+            <rect x="34" y="30" width="11" height="40" rx="3" />
+            <rect x="55" y="30" width="11" height="40" rx="3" />
+          </g>
+        </svg>
+      </button>
+      <button class="hit skip-hit" id="backBtn" type="button" aria-label="Lùi 10 giây"></button>
+      <button class="hit skip-hit" id="fwdBtn" type="button" aria-label="Tới 10 giây"></button>
+
+      <div class="wave" id="wave" role="slider" aria-label="Vị trí bài hát" tabindex="0"
+           aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
+    </div>
+  </main>
+
+  <div class="missing" id="missing" hidden>
+    <h1>Không tìm thấy bài này</h1>
+    <ul id="songList"></ul>
+  </div>
+
+  <audio id="audio" preload="auto" playsinline></audio>
+
+  <script src="/nhac/songs.js"></script>
+  <script src="/nhac/app.js"></script>
+</body>
+</html>

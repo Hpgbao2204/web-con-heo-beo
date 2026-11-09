@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Web con heo béo</title>
+  <meta name="robots" content="noindex" />
+  <style>
+    :root { --bg: #fff5f8; --fg: #3a1020; --muted: #8a5a6c; --card: #ffffff; --accent: #e91e63; --line: #f3d3df; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #1d0f15; --fg: #fbe9f0; --muted: #c495a8; --card: #2a1720; --accent: #ff5c93; --line: #43252f; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    main { max-width: 560px; margin: 0 auto; padding: 40px 16px 56px; }
+    h1 { font-size: 26px; margin: 0 0 4px; }
+    p.lead { margin: 0 0 28px; color: var(--muted); }
+    h2 { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 28px 0 10px; }
+    a.card { display: flex; align-items: center; gap: 14px; padding: 14px 16px; margin-bottom: 10px; border-radius: 16px;
+      background: var(--card); border: 1px solid var(--line); color: inherit; text-decoration: none; }
+    a.card:active { transform: scale(.99); }
+    .ic { flex: none; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--accent); color: #fff; font-size: 20px; }
+    .t { font-weight: 600; }
+    .s { font-size: 13px; color: var(--muted); word-break: break-all; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Web con heo béo</h1>
+    <p class="lead">Các trang web nhỏ cho sự kiện — mỗi tính năng một đường dẫn.</p>
+
+    <h2>NFC · Nghe nhạc</h2>
+    <div id="songs"></div>
+
+    <h2>Khác</h2>
+    <a class="card" href="https://wavecode-iota.vercel.app">
+      <span class="ic">〰</span>
+      <span><span class="t">WaveCode</span><br /><span class="s">Mã sóng âm — quét để nghe nhạc</span></span>
+    </a>
+  </main>
+  <script src="/nhac/songs.js"></script>
+  <script>
+    const box = document.getElementById('songs');
+    for (const [slug, s] of Object.entries(window.SONGS || {})) {
+      const a = document.createElement('a');
+      a.className = 'card';
+      a.href = '/nhac/' + slug;
+      a.innerHTML = '<span class="ic">♪</span><span><span class="t"></span><br><span class="s"></span></span>';
+      a.querySelector('.t').textContent = s.title;
+      a.querySelector('.s').textContent = location.host + '/nhac/' + slug;
+      box.appendChild(a);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dấu ấn</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #05060a; color: #fff; }
+    body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+    body.idle { cursor: none; }
+    canvas { display: block; }
+    .vignette {
+      position: fixed; inset: 0; pointer-events: none;
+      background: radial-gradient(ellipse at center, transparent 45%, #05060acc 100%);
+    }
+    .hud {
+      position: fixed; left: 0; right: 0; bottom: 5vh; text-align: center; pointer-events: none;
+    }
+    .hud h1 {
+      margin: 0; font-weight: 300; letter-spacing: .3em; text-transform: uppercase;
+      font-size: clamp(16px, 2.2vw, 40px); color: #f6d47acc;
+    }
+    .hud .count {
+      margin-top: .4em; font-size: clamp(14px, 1.6vw, 30px); color: #ffffffb0; letter-spacing: .08em;
+    }
+    .hud .count b { color: #fff; font-weight: 600; display: inline-block; transition: transform .3s; }
+    .hud .count b.bump { transform: scale(1.35); color: #f6d47a; }
+    .offline {
+      position: fixed; top: 16px; right: 16px; font-size: 13px; color: #e5675f; opacity: 0; transition: opacity .3s;
+    }
+    .offline.show { opacity: 1; }
+  </style>
+</head>
+<body>
+  <div class="vignette"></div>
+  <div class="hud">
+    <h1 id="title">Dấu ấn đồng hành</h1>
+    <div class="count"><b id="count">0</b> chữ ký</div>
+  </div>
+  <div id="offline" class="offline">Mất kết nối, đang thử lại…</div>
+
+<script type="module">
+  import * as THREE from '/vendor/three/three.module.js';
+
+  const params = new URLSearchParams(location.search);
+  if (params.get('title')) document.getElementById('title').textContent = params.get('title');
+
+  const BG = 0x05060a;
+  const RADIUS = 5;
+  const CAMERA_Z = 15;
+  const SPHERE_Y = 0.6;                // nâng quả cầu lên để không đè chữ ở dưới
+  const TILT = 0.28;
+  const SPIN_SPEED = 0.12;              // rad/giây
+  const FOCUS_POS = new THREE.Vector3(0, 0.6, 9.5);
+  const FOCUS_HEIGHT = 1.9;
+  const FOCUS_MAX_WIDTH = 6.5;
+  const TINTS = [0xffffff, 0xf6d47a, 0xffe7b0, 0xfff4dc];
+
+  // ---------- Scene ----------
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(innerWidth, innerHeight);
+  document.body.prepend(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(BG);
+  scene.fog = new THREE.Fog(BG, CAMERA_Z - RADIUS, CAMERA_Z + RADIUS + 2);
+
+  const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 100);
+  camera.position.set(0, 0, CAMERA_Z);
+
+  addEventListener('resize', () => {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+
+  // Nền sao
+  const stars = (() => {
+    const n = 1500, pos = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      const v = new THREE.Vector3().randomDirection().multiplyScalar(20 + Math.random() * 30);
+      pos.set([v.x, v.y, v.z], i * 3);
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const mat = new THREE.PointsMaterial({ color: 0x8890b0, size: 0.08, transparent: true, opacity: 0.7, fog: false });
+    const pts = new THREE.Points(geo, mat);
+    scene.add(pts);
+    return pts;
+  })();
+
+  // Quầng sáng sau chữ ký mới
+  const glow = (() => {
+    const c = document.createElement('canvas');
+    c.width = c.height = 256;
+    const g = c.getContext('2d');
+    const grad = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+    grad.addColorStop(0, 'rgba(246,212,122,0.55)');
+    grad.addColorStop(0.4, 'rgba(246,212,122,0.15)');
+    grad.addColorStop(1, 'rgba(246,212,122,0)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 256, 256);
+    const mat = new THREE.SpriteMaterial({
+      map: new THREE.CanvasTexture(c), blending: THREE.AdditiveBlending,
+      transparent: true, depthWrite: false, opacity: 0, fog: false,
+    });
+    const s = new THREE.Sprite(mat);
+    s.position.copy(FOCUS_POS).add(new THREE.Vector3(0, 0, -0.1));
+    s.scale.set(9, 5, 1);
+    s.renderOrder = 9;
+    scene.add(s);
+    return s;
+  })();
+
+  // ---------- Chữ ký ----------
+  /** id -> { sig, sprite, aspect, local: Vector3, size, removing } */
+  const entries = new Map();
+  const queue = [];      // chữ ký mới chờ được giới thiệu lần lượt
+  let focused = null;    // entry đang được phóng to
+  let focusUntil = 0;
+  const loader = new THREE.TextureLoader();
+  const maxAniso = renderer.capabilities.getMaxAnisotropy();
+
+  function tintFor(id) {
+    let h = 0;
+    for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    return TINTS[h % TINTS.length];
+  }
+
+  async function createEntry(sig) {
+    const tex = await loader.loadAsync(sig.url);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = maxAniso;
+    const mat = new THREE.SpriteMaterial({
+      map: tex, color: tintFor(sig.id), transparent: true, depthWrite: false, opacity: 0, fog: true,
+    });
+    const sprite = new THREE.Sprite(mat);
+    sprite.scale.set(0.001, 0.001, 1);
+    return { sig, sprite, aspect: tex.image.width / tex.image.height, local: new THREE.Vector3(), size: new THREE.Vector2() };
+  }
+
+  // Rải đều các chữ ký lên mặt cầu (Fibonacci sphere) và tính kích thước theo mật độ
+  function relayout() {
+    const list = [...entries.values()].filter((e) => !e.removing && e.sprite.parent);
+    const n = list.length;
+    const cell = RADIUS * Math.sqrt((4 * Math.PI) / Math.max(n, 10));
+    const golden = Math.PI * (3 - Math.sqrt(5));
+    list.forEach((e, i) => {
+      const y = n === 1 ? 0 : 1 - (i / (n - 1)) * 2;
+      const r = Math.sqrt(1 - y * y);
+      const theta = golden * i;
+      e.local.set(Math.cos(theta) * r, y * 0.9, Math.sin(theta) * r).multiplyScalar(RADIUS);
+      const w = Math.min(cell * 1.25, cell * 0.75 * e.aspect);
+      e.size.set(w, w / e.aspect);
+    });
+    setCount(n);
+  }
+
+  async function addSignature(sig, { announce }) {
+    if (entries.has(sig.id)) return;
+    const entry = await createEntry(sig);
+    if (entries.has(sig.id)) return;
+    entries.set(sig.id, entry);
+    if (announce) {
+      queue.push(entry);
+    } else {
+      scene.add(entry.sprite);
+      relayout();
+      entry.sprite.position.copy(entry.local).applyEuler(sphereEuler);
+      entry.sprite.position.y += SPHERE_Y;
+    }
+  }
+
+  function removeSignature(id) {
+    const e = entries.get(id);
+    if (!e) return;
+    e.removing = true;
+    const qi = queue.indexOf(e);
+    if (qi >= 0) queue.splice(qi, 1);
+    if (focused === e) focused = null;
+    relayout();
+  }
+
+  function nextFocus(now) {
+    const e = queue.shift();
+    if (!e) return;
+    scene.add(e.sprite);
+    e.sprite.position.copy(FOCUS_POS).add(new THREE.Vector3(0, 0, 3));
+    e.sprite.renderOrder = 10;
+    relayout();
+    focused = e;
+    // Nhiều chữ ký đăng cùng lúc thì rút ngắn thời gian giới thiệu mỗi cái
+    focusUntil = now + Math.max(1.2, 3 - queue.length * 0.25);
+  }
+
+  // ---------- Đếm ----------
+  const countEl = document.getElementById('count');
+  let shownCount = 0;
+  function setCount(n) {
+    if (n === shownCount) return;
+    const up = n > shownCount;
+    shownCount = n;
+    countEl.textContent = n.toLocaleString('vi-VN');
+    if (up) {
+      countEl.classList.add('bump');
+      setTimeout(() => countEl.classList.remove('bump'), 300);
+    }
+  }
+
+  // ---------- Vòng lặp ----------
+  const sphereEuler = new THREE.Euler(TILT, 0, 0, 'XYZ');
+  const tmp = new THREE.Vector3();
+  const clock = new THREE.Clock();
+
+  renderer.setAnimationLoop(() => {
+    const dt = Math.min(clock.getDelta(), 0.1);
+    const now = clock.elapsedTime;
+    sphereEuler.y += SPIN_SPEED * dt;
+    stars.rotation.y += SPIN_SPEED * 0.15 * dt;
+
+    if (focused && now > focusUntil) {
+      focused.sprite.renderOrder = 0;
+      focused = null;
+    }
+    if (!focused && queue.length) nextFocus(now);
+
+    const k = 1 - Math.exp(-dt * 3);
+    for (const [id, e] of entries) {
+      const s = e.sprite;
+      if (!s.parent) continue;
+      const mat = s.material;
+
+      if (e.removing) {
+        mat.opacity -= dt * 1.5;
+        s.scale.multiplyScalar(1 - dt);
+        if (mat.opacity <= 0) {
+          scene.remove(s);
+          mat.map.dispose();
+          mat.dispose();
+          entries.delete(id);
+        }
+        continue;
+      }
+
+      let tw, th;
+      if (e === focused) {
+        tmp.copy(FOCUS_POS);
+        tw = Math.min(FOCUS_MAX_WIDTH, FOCUS_HEIGHT * e.aspect);
+        th = tw / e.aspect;
+      } else {
+        tmp.copy(e.local).applyEuler(sphereEuler);
+        tmp.y += SPHERE_Y;
+        tw = e.size.x;
+        th = e.size.y;
+      }
+      s.position.lerp(tmp, e === focused ? k * 1.6 : k);
+      s.scale.x += (tw - s.scale.x) * k;
+      s.scale.y += (th - s.scale.y) * k;
+      // Làm mờ quả cầu khi đang giới thiệu chữ ký mới cho dễ nhìn
+      const targetOpacity = focused && e !== focused ? 0.25 : 1;
+      mat.opacity += (targetOpacity - mat.opacity) * Math.min(1, dt * 2.5);
+    }
+
+    glow.material.opacity += ((focused ? 1 : 0) - glow.material.opacity) * k;
+    renderer.render(scene, camera);
+  });
+
+  // ---------- Realtime ----------
+  const offlineEl = document.getElementById('offline');
+
+  async function syncAll() {
+    const list = await (await fetch('/api/signatures')).json();
+    const ids = new Set(list.map((s) => s.id));
+    for (const id of entries.keys()) if (!ids.has(id)) removeSignature(id);
+    await Promise.all(list.map((sig) => addSignature(sig, { announce: false })));
+  }
+
+  const events = new EventSource('/api/events');
+  events.addEventListener('open', () => {
+    offlineEl.classList.remove('show');
+    syncAll().catch(console.error);
+  });
+  events.addEventListener('error', () => offlineEl.classList.add('show'));
+  events.addEventListener('added', (ev) => addSignature(JSON.parse(ev.data), { announce: true }).catch(console.error));
+  events.addEventListener('removed', (ev) => removeSignature(JSON.parse(ev.data).id));
+
+  // ---------- Tiện ích cho màn TV ----------
+  addEventListener('dblclick', () => {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else document.documentElement.requestFullscreen().catch(() => {});
+  });
+
+  let idleTimer;
+  addEventListener('mousemove', () => {
+    document.body.classList.remove('idle');
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => document.body.classList.add('idle'), 2500);
+  });
+
+  // Giữ màn hình không tắt
+  async function keepAwake() {
+    try { await navigator.wakeLock?.request('screen'); } catch {}
+  }
+  keepAwake();
+  document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && keepAwake());
+</script>
+</body>
+</html>

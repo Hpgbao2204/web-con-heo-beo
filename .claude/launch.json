@@ -1,0 +1,35 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "signature-wall",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "server.js"
+      ],
+      "port": 3000,
+      "url": "http://localhost:3000"
+    },
+    {
+      "name": "wavecode",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "wavecode",
+        "run",
+        "dev"
+      ],
+      "port": 3300,
+      "url": "http://localhost:3300"
+    },
+    {
+      "name": "site",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "scripts/serve-site.mjs"
+      ],
+      "port": 3400,
+      "url": "http://localhost:3400"
+    }
+  ]
+}

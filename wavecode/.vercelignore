@@ -1,0 +1,7 @@
+dist
+dev-dist
+data
+samples
+tests
+.env*
+*.tmp
