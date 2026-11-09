@@ -1,0 +1,9 @@
+# Chỉ cần hub/, NFC/nhac/, scripts/ để build web tĩnh
+server.js
+public
+data
+wavecode
+node_modules
+NFC/WEB NHẠC
+package.json
+package-lock.json

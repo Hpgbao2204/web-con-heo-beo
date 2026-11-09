@@ -7,3 +7,6 @@ dev-dist/
 !.env.example
 *.tmp
 .claude/settings.local.json
+
+.vercel
+.env*
