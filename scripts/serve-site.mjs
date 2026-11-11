@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 const DIST = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'dist');
 const PORT = Number(process.env.PORT) || 3400;
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css',
-  '.svg': 'image/svg+xml', '.webp': 'image/webp', '.mp3': 'audio/mpeg', '.json': 'application/json' };
+  '.svg': 'image/svg+xml', '.webp': 'image/webp', '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.json': 'application/json' };
 const vercel = JSON.parse(fs.readFileSync(path.join(DIST, '..', 'vercel.json'), 'utf8'));
 
 function resolve(p) {
